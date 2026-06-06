@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/lib/common.sh"
+
+"$script_dir/dotnet-restore"
+"$script_dir/dotnet-format-check"
+run_quiet "build Release" dotnet build "$SOLUTION" \
+    -m:1 --nologo --verbosity quiet -c Release --no-restore
+run_quiet "unit tests" dotnet test "$TEST_PROJECT" \
+    -m:1 --nologo --verbosity quiet -c Release --no-restore --no-build \
+    --filter "Category!=Integration" \
+    --logger "console;verbosity=minimal"

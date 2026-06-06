@@ -1,0 +1,22 @@
+bin/
+obj/
+TestResults/
+artifacts/
+output/
+*.tar.gz
+*.zip
+*.nupkg
+*.user
+*.suo
+*.log
+
+# Local agent/workspace metadata.
+.agents/
+.codex
+.codex/
+
+# Never commit local credentials or MCP client configs with secrets.
+credentials/
+*.service-account.json
+service-account*.json
+appsettings.Local.json

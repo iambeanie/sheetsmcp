@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/lib/common.sh"
+
+readonly supported_rids=(linux-x64 linux-arm64 osx-x64 osx-arm64 win-x64)
+requested="${1:-all}"
+
+is_supported_rid() {
+    local candidate="$1"
+    local rid
+    for rid in "${supported_rids[@]}"; do
+        [[ "$candidate" == "$rid" ]] && return 0
+    done
+    return 1
+}
+
+if [[ "$requested" == "all" ]]; then
+    rids=("${supported_rids[@]}")
+elif is_supported_rid "$requested"; then
+    rids=("$requested")
+else
+    printf 'Usage: %s [all|%s]\n' "$0" "$(IFS='|'; echo "${supported_rids[*]}")" >&2
+    exit 2
+fi
+
+if (( $# > 1 )); then
+    printf 'Usage: %s [all|%s]\n' "$0" "$(IFS='|'; echo "${supported_rids[*]}")" >&2
+    exit 2
+fi
+
+mkdir -p "$ARTIFACTS_DIR/packages" "$ARTIFACTS_DIR/publish"
+rm -f "$ARTIFACTS_DIR/SHA256SUMS"
+
+for rid in "${rids[@]}"; do
+    publish_dir="$ARTIFACTS_DIR/publish/$rid"
+    stage_dir="$ARTIFACTS_DIR/.stage/$rid"
+    rm -rf "$publish_dir" "$stage_dir"
+    mkdir -p "$publish_dir" "$stage_dir"
+
+    run_quiet "publish $rid" dotnet publish "$APP_PROJECT" \
+        -m:1 --nologo --verbosity quiet -c Release -r "$rid" \
+        --self-contained true -p:PublishSingleFile=true \
+        -o "$publish_dir"
+
+    executable="sheetsmcp"
+    [[ "$rid" == win-* ]] && executable="sheetsmcp.exe"
+    cp "$publish_dir/$executable" "$stage_dir/$executable"
+    cp "$REPO_ROOT/README.md" "$stage_dir/README.md"
+
+    for license in LICENSE LICENSE.md LICENSE.txt; do
+        [[ -f "$REPO_ROOT/$license" ]] && cp "$REPO_ROOT/$license" "$stage_dir/$license"
+    done
+
+    if [[ "$rid" == win-* ]]; then
+        package="$ARTIFACTS_DIR/packages/sheetsmcp-$rid.zip"
+        rm -f "$package"
+        run_quiet "package $rid" bash -c \
+            'cd "$1" && zip -q -r "$2" .' _ "$stage_dir" "$package"
+    else
+        package="$ARTIFACTS_DIR/packages/sheetsmcp-$rid.tar.gz"
+        rm -f "$package"
+        run_quiet "package $rid" tar -czf "$package" -C "$stage_dir" .
+    fi
+done
+
+rm -rf "$ARTIFACTS_DIR/.stage"
+
+(
+    cd "$ARTIFACTS_DIR/packages"
+    sha256sum ./* >"$ARTIFACTS_DIR/SHA256SUMS"
+)
+printf 'OK checksums (%s)\n' "$ARTIFACTS_DIR/SHA256SUMS"

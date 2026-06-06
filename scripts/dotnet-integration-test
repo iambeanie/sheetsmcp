@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
+
+credentials="${SHEETSMCP_GOOGLE_APPLICATION_CREDENTIALS:-}"
+spreadsheet="${SHEETSMCP_INTEGRATION_SPREADSHEET:-}"
+
+if [[ -z "$credentials" ]]; then
+    printf 'SKIP integration tests: SHEETSMCP_GOOGLE_APPLICATION_CREDENTIALS is not set\n'
+    exit 0
+fi
+
+credentials="$(expand_home "$credentials")"
+if [[ ! -f "$credentials" ]]; then
+    printf 'SKIP integration tests: credentials file does not exist: %s\n' "$credentials"
+    exit 0
+fi
+
+if [[ -z "$spreadsheet" ]]; then
+    printf 'SKIP integration tests: SHEETSMCP_INTEGRATION_SPREADSHEET is not set\n'
+    exit 0
+fi
+
+run_quiet "Google read integration test" dotnet test "$TEST_PROJECT" \
+    -m:1 --nologo --verbosity quiet -c Release \
+    --filter "Category=Integration&Type=Read" \
+    --logger "console;verbosity=minimal"
+
+if [[ "${SHEETSMCP_INTEGRATION_WRITE:-}" == "1" ]]; then
+    run_quiet "Google write integration test" dotnet test "$TEST_PROJECT" \
+        -m:1 --nologo --verbosity quiet -c Release \
+        --filter "Category=Integration&Type=Write" \
+        --logger "console;verbosity=minimal"
+else
+    printf 'SKIP Google write integration test: SHEETSMCP_INTEGRATION_WRITE is not 1\n'
+fi

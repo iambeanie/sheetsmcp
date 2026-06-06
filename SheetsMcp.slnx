@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SheetsMcp/SheetsMcp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SheetsMcp.Tests/SheetsMcp.Tests.csproj" />
+  </Folder>
+</Solution>

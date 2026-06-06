@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
+
+# dotnet format does not accept the MSBuild -m:1 option.
+run_quiet "format check" dotnet format "$SOLUTION" \
+    --no-restore --verify-no-changes --verbosity minimal
