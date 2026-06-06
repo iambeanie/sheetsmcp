@@ -72,13 +72,18 @@ The Linux x64 artifact also includes:
 - `Install SheetsMCP.desktop`
 - `INSTALL-linux-x64.md`
 
-The installer places the executable in `~/.local/bin/sheetsmcp`, creates per-user configuration directories, offers to configure Claude Desktop and Codex MCP client entries, and can run the Google browser OAuth login.
+The macOS x64 and arm64 artifacts also include:
 
-Release owners may optionally include a project-owned Google OAuth Desktop app client config in the generated Linux x64 package by setting:
+- `install.sh`
+- `INSTALL-macos.md`
+
+The installers place the executable in `~/.local/bin/sheetsmcp`, create per-user configuration directories, offer to configure Claude Desktop and Codex MCP client entries, and can run the Google browser OAuth login.
+
+Release owners may optionally include a project-owned Google OAuth Desktop app client config in generated installer packages by setting:
 
 ```bash
 SHEETSMCP_RELEASE_OAUTH_CLIENT_JSON=/private/path/oauth_client.json \
-./scripts/dotnet-publish linux-x64
+./scripts/dotnet-publish osx-arm64
 ```
 
 Never commit that JSON file. It must come from a private local path or release secret. If this variable is not set, the installer will explain that Google browser login requires a local OAuth client JSON before `sheetsmcp auth login` can complete.
@@ -103,7 +108,13 @@ Some desktop environments can run `Install SheetsMCP.desktop` by double-clicking
 
 ### macOS
 
-Release separate Intel and Apple Silicon artifacts. Signing and notarization should be considered before distributing outside local development.
+Release separate Intel and Apple Silicon artifacts. Both macOS packages include the guided installer:
+
+```bash
+./install.sh
+```
+
+The installer uses `~/Library/Application Support/SheetsMCP` for OAuth client config and token storage. Signing and notarization should be considered before distributing outside local development.
 
 ### Windows
 
@@ -116,6 +127,7 @@ Before publishing a release:
 - Run `./scripts/dotnet-verify-all`.
 - Publish each runtime identifier.
 - Confirm the Linux x64 package contains `install.sh`, `Install SheetsMCP.desktop`, and `INSTALL-linux-x64.md`.
+- Confirm the macOS packages contain `install.sh` and `INSTALL-macos.md`.
 - Start each published executable and confirm it does not require an installed .NET runtime.
 - Validate stdio MCP startup with a local MCP client or protocol smoke test.
 - Validate a read call against a shared test spreadsheet when credentials are available.

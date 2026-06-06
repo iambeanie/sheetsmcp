@@ -93,6 +93,21 @@ The installer copies the self-contained executable to `~/.local/bin/sheetsmcp`, 
 
 Some desktop environments also allow double-clicking `Install SheetsMCP.desktop` after extraction. If double-click launch is blocked by the file manager, run `./install.sh` in a terminal.
 
+## macOS Install
+
+The macOS Intel and Apple Silicon release packages include a guided installer:
+
+```bash
+mkdir sheetsmcp-osx-arm64
+tar -xzf sheetsmcp-osx-arm64.tar.gz -C sheetsmcp-osx-arm64
+cd sheetsmcp-osx-arm64
+./install.sh
+```
+
+Use `sheetsmcp-osx-x64.tar.gz` instead on Intel Macs. The installer copies the self-contained executable to `~/.local/bin/sheetsmcp`, creates the per-user OAuth directory at `~/Library/Application Support/SheetsMCP`, can configure Claude Desktop and Codex MCP client entries, and offers to run `sheetsmcp auth login`.
+
+macOS may block unsigned downloaded binaries the first time they run. Signing and notarization are not part of the current release flow.
+
 Run these commands outside the MCP client:
 
 ```bash
@@ -134,11 +149,11 @@ Publish one runtime or all supported runtimes:
 
 Packages, per-RID publish directories, and `SHA256SUMS` are written under `artifacts/`.
 
-Release owners can include a project-owned Google OAuth Desktop app client config in the generated Linux x64 package without committing it:
+Release owners can include a project-owned Google OAuth Desktop app client config in generated installer packages without committing it:
 
 ```bash
 SHEETSMCP_RELEASE_OAUTH_CLIENT_JSON=/private/path/oauth_client.json \
-./scripts/dotnet-publish linux-x64
+./scripts/dotnet-publish osx-arm64
 ```
 
 That file is copied into the generated package so the installer can start the normal browser OAuth consent flow. If it is not provided, users can still install the binary, but they must supply their own Google OAuth Desktop app client JSON before login can complete.

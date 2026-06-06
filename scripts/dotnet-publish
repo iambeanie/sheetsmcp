@@ -7,6 +7,7 @@ source "$script_dir/lib/common.sh"
 readonly supported_rids=(linux-x64 linux-arm64 osx-x64 osx-arm64 win-x64)
 requested="${1:-all}"
 linux_x64_packaging_dir="$REPO_ROOT/packaging/linux-x64"
+macos_packaging_dir="$REPO_ROOT/packaging/macos"
 
 is_supported_rid() {
     local candidate="$1"
@@ -55,7 +56,15 @@ for rid in "${rids[@]}"; do
         install -m 0755 "$linux_x64_packaging_dir/install.sh" "$stage_dir/install.sh"
         install -m 0755 "$linux_x64_packaging_dir/Install SheetsMCP.desktop" "$stage_dir/Install SheetsMCP.desktop"
         install -m 0644 "$linux_x64_packaging_dir/INSTALL-linux-x64.md" "$stage_dir/INSTALL-linux-x64.md"
+    fi
 
+    if [[ "$rid" == osx-* ]]; then
+        run_quiet "installer syntax $rid" bash -n "$macos_packaging_dir/install.sh"
+        install -m 0755 "$macos_packaging_dir/install.sh" "$stage_dir/install.sh"
+        install -m 0644 "$macos_packaging_dir/INSTALL-macos.md" "$stage_dir/INSTALL-macos.md"
+    fi
+
+    if [[ "$rid" == "linux-x64" || "$rid" == osx-* ]]; then
         if [[ -n "${SHEETSMCP_RELEASE_OAUTH_CLIENT_JSON:-}" ]]; then
             if [[ ! -f "$SHEETSMCP_RELEASE_OAUTH_CLIENT_JSON" ]]; then
                 printf 'SHEETSMCP_RELEASE_OAUTH_CLIENT_JSON does not exist: %s\n' "$SHEETSMCP_RELEASE_OAUTH_CLIENT_JSON" >&2
@@ -86,6 +95,6 @@ rm -rf "$ARTIFACTS_DIR/.stage"
 
 (
     cd "$ARTIFACTS_DIR/packages"
-    sha256sum ./* >"$ARTIFACTS_DIR/SHA256SUMS"
+    find . -maxdepth 1 -type f -print0 | sort -z | xargs -0 sha256sum >"$ARTIFACTS_DIR/SHA256SUMS"
 )
 printf 'OK checksums (%s)\n' "$ARTIFACTS_DIR/SHA256SUMS"
