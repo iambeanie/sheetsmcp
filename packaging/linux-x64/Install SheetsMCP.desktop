@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Install SheetsMCP
+Comment=Install the SheetsMCP local MCP server
+Exec=sh -c 'cd "$(dirname "$1")" && exec ./install.sh' dummy %k
+Terminal=true
+Categories=Utility;

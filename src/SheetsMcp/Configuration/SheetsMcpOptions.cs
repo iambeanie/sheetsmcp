@@ -1,56 +1,36 @@
 namespace SheetsMcp.Configuration;
 
-public enum WriteGuardrailMode
-{
-    PreviewRequired,
-    Direct
-}
-
 public sealed record SheetsMcpOptions(
-    string CredentialsPath,
-    WriteGuardrailMode WriteGuardrails,
+    string OAuthClientConfigPath,
+    string OAuthTokenStorePath,
     string? AuditLogPath)
 {
-    public const string CredentialsEnvVar = "SHEETSMCP_GOOGLE_APPLICATION_CREDENTIALS";
-    public const string GuardrailsEnvVar = "SHEETSMCP_WRITE_GUARDRAILS";
     public const string AuditLogPathEnvVar = "SHEETSMCP_AUDIT_LOG_PATH";
+    public const string DefaultOAuthUserId = "default";
 
     public static SheetsMcpOptions FromEnvironment()
     {
-        var credentialsPath = Environment.GetEnvironmentVariable(CredentialsEnvVar);
-        if (string.IsNullOrWhiteSpace(credentialsPath))
-        {
-            throw new InvalidOperationException($"{CredentialsEnvVar} must point to a Google service-account JSON key file.");
-        }
-
-        credentialsPath = ExpandHome(credentialsPath.Trim());
-        if (!File.Exists(credentialsPath))
-        {
-            throw new InvalidOperationException($"{CredentialsEnvVar} points to a file that does not exist.");
-        }
-
-        var guardrails = ParseGuardrails(Environment.GetEnvironmentVariable(GuardrailsEnvVar));
+        var oauthClientConfigPath = Path.Combine(GetConfigDirectory(), "oauth_client.json");
+        var oauthTokenStorePath = Path.Combine(GetDataDirectory(), "google-oauth");
         var auditLogPath = Environment.GetEnvironmentVariable(AuditLogPathEnvVar);
 
-        return new SheetsMcpOptions(credentialsPath, guardrails, string.IsNullOrWhiteSpace(auditLogPath) ? null : ExpandHome(auditLogPath.Trim()));
+        return new SheetsMcpOptions(
+            oauthClientConfigPath,
+            oauthTokenStorePath,
+            string.IsNullOrWhiteSpace(auditLogPath) ? null : ExpandHome(auditLogPath.Trim()));
     }
 
-    private static WriteGuardrailMode ParseGuardrails(string? value)
+    public void ValidateOAuthClientConfigExists()
     {
-        if (string.IsNullOrWhiteSpace(value) || value.Equals("preview-required", StringComparison.OrdinalIgnoreCase))
+        if (!File.Exists(OAuthClientConfigPath))
         {
-            return WriteGuardrailMode.PreviewRequired;
+            throw new InvalidOperationException(
+                $"Google OAuth desktop client config was not found at '{OAuthClientConfigPath}'. " +
+                "Place it at the default per-user config path.");
         }
-
-        if (value.Equals("direct", StringComparison.OrdinalIgnoreCase))
-        {
-            return WriteGuardrailMode.Direct;
-        }
-
-        throw new InvalidOperationException($"{GuardrailsEnvVar} must be 'preview-required' or 'direct'.");
     }
 
-    private static string ExpandHome(string path)
+    internal static string ExpandHome(string path)
     {
         if (path == "~")
         {
@@ -63,5 +43,45 @@ public sealed record SheetsMcpOptions(
         }
 
         return path;
+    }
+
+    private static string GetConfigDirectory()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SheetsMCP");
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "SheetsMCP");
+        }
+
+        var xdgConfigHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+        return Path.Combine(
+            string.IsNullOrWhiteSpace(xdgConfigHome)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config")
+                : ExpandHome(xdgConfigHome.Trim()),
+            "sheetsmcp");
+    }
+
+    private static string GetDataDirectory()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SheetsMCP");
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "SheetsMCP");
+        }
+
+        var xdgDataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+        return Path.Combine(
+            string.IsNullOrWhiteSpace(xdgDataHome)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share")
+                : ExpandHome(xdgDataHome.Trim()),
+            "sheetsmcp");
     }
 }

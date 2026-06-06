@@ -19,4 +19,6 @@ output/
 credentials/
 *.service-account.json
 service-account*.json
+oauth_client.json
+google-oauth/
 appsettings.Local.json

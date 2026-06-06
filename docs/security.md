@@ -1,39 +1,32 @@
 # Security
 
-SheetsMCP uses a Google service account to access spreadsheets that have been directly shared with that service-account email address.
+SheetsMCP uses Google installed-app OAuth to access spreadsheets as the signed-in Google user.
 
-## Service-Account Credentials
+## OAuth Credentials
 
-Service-account JSON keys are sensitive credentials. They allow the app to act as the service account for the scopes granted by the application.
+OAuth client JSON files and cached tokens are sensitive. The client JSON identifies the Google Cloud OAuth app; the token cache lets SheetsMCP refresh access for the signed-in user.
 
 Rules:
 
-- Do not commit service-account JSON files.
-- Do not paste service-account JSON into MCP client config.
-- Do not log credential paths together with credential contents.
-- Do not log private keys, access tokens, or raw Google auth responses.
-- Store the JSON key in a user-controlled secure location outside the repository.
-- Use filesystem permissions appropriate for the local OS.
+- Do not commit OAuth client JSON files or token cache directories.
+- Do not paste OAuth token values into MCP client config.
+- Do not log OAuth client secrets, access tokens, refresh tokens, or raw Google auth responses.
+- Store OAuth files in user-controlled local config/data directories with appropriate filesystem permissions.
 
-Recommended configuration:
-
-```bash
-SHEETSMCP_GOOGLE_APPLICATION_CREDENTIALS=/secure/path/service-account.json
-```
+The app uses per-user config/data defaults documented in the README.
 
 ## Spreadsheet Access
 
-Access is granted by sharing a spreadsheet with the service-account email. The server cannot list all spreadsheets that were shared with the service account and must not implement Google Drive discovery.
+Access is granted by the signed-in Google user's existing Sheets permissions. The server cannot list all spreadsheets the user can access and must not implement Google Drive discovery.
 
-Every spreadsheet operation must include a spreadsheet URL or ID in the MCP tool-call arguments. The MCP server must not accept a configured default spreadsheet ID, because it is a bridge that can operate on any explicitly supplied spreadsheet that the service account can access.
+Every spreadsheet operation must include a spreadsheet URL or ID in the MCP tool-call arguments. The MCP server must not accept a configured default spreadsheet ID, because it is a bridge that can operate on any explicitly supplied spreadsheet that the signed-in user can access.
 
 If access fails, return a clear permission or not-found error. Do not attempt to discover alternative files.
 
 ## Google API Scope
 
-Use the narrowest Google Sheets scope required by the configured server mode:
+Use the Google Sheets scope required by the configured server tools:
 
-- Read-only mode: `https://www.googleapis.com/auth/spreadsheets.readonly`
 - Read/write mode: `https://www.googleapis.com/auth/spreadsheets`
 
 Do not request Drive scopes for v1.
@@ -65,8 +58,7 @@ When enabled, audit logs should capture:
 
 Audit logs should not include:
 
-- service-account key contents
-- access tokens
+- OAuth client secrets or token values
 - full cell values by default
 - raw request bodies that may contain spreadsheet data
 
@@ -78,10 +70,7 @@ Acceptable:
 
 ```json
 {
-  "command": "/path/to/sheetsmcp",
-  "env": {
-    "SHEETSMCP_GOOGLE_APPLICATION_CREDENTIALS": "/secure/path/service-account.json"
-  }
+  "command": "/path/to/sheetsmcp"
 }
 ```
 
@@ -92,7 +81,7 @@ Not acceptable:
 ```json
 {
   "env": {
-    "GOOGLE_PRIVATE_KEY": "-----BEGIN PRIVATE KEY-----..."
+    "GOOGLE_REFRESH_TOKEN": "1//..."
   }
 }
 ```
@@ -101,9 +90,7 @@ Not acceptable:
 
 The following are intentionally out of scope:
 
-- OAuth user consent
-- desktop browser login
-- refresh-token storage
-- user account switching
+- service-account auth
 - domain-wide delegation
 - Drive listing or search
+- MCP server OAuth

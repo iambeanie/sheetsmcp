@@ -1,6 +1,6 @@
 # SheetsMCP
 
-SheetsMCP is a local MCP server for reading and writing Google Sheets from MCP-capable clients. It is designed for controlled spreadsheets that are explicitly shared with a Google service account.
+SheetsMCP is a local MCP server for reading and writing Google Sheets from MCP-capable clients. It uses Google user OAuth so local tools can access spreadsheets available to the signed-in Google user.
 
 The app runs locally over stdio and is intended to ship as standalone executables for Linux, macOS, and Windows. Target machines should not need to install .NET or any other runtime.
 
@@ -8,27 +8,27 @@ The app runs locally over stdio and is intended to ship as standalone executable
 
 - Language/runtime: C# on .NET 10.
 - MCP transport: local stdio.
-- Google auth: service account only.
+- Google auth: installed-app user OAuth.
 - Google APIs: Google Sheets API.
 - Spreadsheet access: by explicit spreadsheet URL or spreadsheet ID only.
 - Runtime model: bridge process; the active spreadsheet is supplied per MCP tool call, not configured at startup.
 - Distribution: self-contained platform-specific binaries.
 
-SheetsMCP will not support user OAuth, Google account sign-in, refresh-token storage, Drive search, or listing available spreadsheets.
+SheetsMCP does not support service-account auth, domain-wide delegation, Drive search, or listing available spreadsheets.
 
 ## Access Model
 
-SheetsMCP acts as the service account. To use a spreadsheet:
+SheetsMCP acts as the signed-in Google user. To use a spreadsheet:
 
-1. Create or choose a Google Cloud service account.
-2. Enable the Google Sheets API in the Google Cloud project.
-3. Create a service-account JSON key and store it securely on the local machine.
-4. Share the target spreadsheet with the service-account email address.
+1. Create a Google Cloud OAuth client with application type `Desktop app`.
+2. Enable the Google Sheets API in that Google Cloud project.
+3. Place the downloaded OAuth client JSON at the default local config path.
+4. Run `sheetsmcp auth login` and complete the browser consent flow.
 5. Call MCP tools with the spreadsheet URL or spreadsheet ID.
 
-The app cannot discover which spreadsheets the service account can access. If a spreadsheet was not shared with the service-account email, Google Sheets API calls should fail with a permission error.
+The app cannot discover which spreadsheets the signed-in user can access. If the user cannot access a spreadsheet, Google Sheets API calls should fail with a permission error.
 
-SheetsMCP is not configured for one worksheet or spreadsheet when the MCP server starts. The server only holds service-account credentials and bridge configuration. Each query that uses a SheetsMCP tool must pass the target spreadsheet URL or ID as part of that tool call.
+SheetsMCP is not configured for one worksheet or spreadsheet when the MCP server starts. The server only uses cached OAuth tokens and bridge configuration. Each query that uses a SheetsMCP tool must pass the target spreadsheet URL or ID as part of that tool call.
 
 ## Planned MCP Tools
 
@@ -66,29 +66,53 @@ The scripts capture routine .NET output. A clean operation prints one `OK` line;
 
 ## Configuration
 
-Recommended environment variables:
+Optional environment variables:
 
 ```bash
-SHEETSMCP_GOOGLE_APPLICATION_CREDENTIALS=/secure/path/service-account.json
-SHEETSMCP_WRITE_GUARDRAILS=preview-required
 SHEETSMCP_AUDIT_LOG_PATH=/secure/path/sheetsmcp-audit.log
 ```
 
-Do not commit service-account JSON keys or put their contents in MCP client config. Do not put spreadsheet IDs in the MCP app configuration; pass the spreadsheet URL or ID with each MCP tool call.
+SheetsMCP always uses per-user OAuth paths:
+
+- Linux: `~/.config/sheetsmcp/oauth_client.json` and `~/.local/share/sheetsmcp/google-oauth`
+- macOS: `~/Library/Application Support/SheetsMCP/oauth_client.json` and `~/Library/Application Support/SheetsMCP/google-oauth`
+- Windows: `%APPDATA%\SheetsMCP\oauth_client.json` and `%APPDATA%\SheetsMCP\google-oauth`
+
+## Linux x64 Install
+
+The Linux x64 release package includes a guided installer:
+
+```bash
+mkdir sheetsmcp-linux-x64
+tar -xzf sheetsmcp-linux-x64.tar.gz -C sheetsmcp-linux-x64
+cd sheetsmcp-linux-x64
+./install.sh
+```
+
+The installer copies the self-contained executable to `~/.local/bin/sheetsmcp`, creates the per-user OAuth directories, can configure Claude Desktop and Codex MCP client entries, and offers to run `sheetsmcp auth login`.
+
+Some desktop environments also allow double-clicking `Install SheetsMCP.desktop` after extraction. If double-click launch is blocked by the file manager, run `./install.sh` in a terminal.
+
+Run these commands outside the MCP client:
+
+```bash
+sheetsmcp auth login
+sheetsmcp auth status
+sheetsmcp auth logout --yes
+```
+
+Do not commit OAuth client JSON files, token caches, or put token values in MCP client config. Do not put spreadsheet IDs in the MCP app configuration; pass the spreadsheet URL or ID with each MCP tool call.
 
 ## Example MCP Client Configuration
 
-The exact shape depends on the MCP client. The important part is that the client launches the local executable over stdio and does not contain the service-account JSON secret.
+The exact shape depends on the MCP client. The important part is that the client launches the local executable over stdio and does not contain OAuth token values.
 
 ```json
 {
   "mcpServers": {
     "sheetsmcp": {
       "command": "/path/to/sheetsmcp",
-      "args": [],
-      "env": {
-        "SHEETSMCP_GOOGLE_APPLICATION_CREDENTIALS": "/secure/path/service-account.json"
-      }
+      "args": []
     }
   }
 }
@@ -110,12 +134,20 @@ Publish one runtime or all supported runtimes:
 
 Packages, per-RID publish directories, and `SHA256SUMS` are written under `artifacts/`.
 
+Release owners can include a project-owned Google OAuth Desktop app client config in the generated Linux x64 package without committing it:
+
+```bash
+SHEETSMCP_RELEASE_OAUTH_CLIENT_JSON=/private/path/oauth_client.json \
+./scripts/dotnet-publish linux-x64
+```
+
+That file is copied into the generated package so the installer can start the normal browser OAuth consent flow. If it is not provided, users can still install the binary, but they must supply their own Google OAuth Desktop app client JSON before login can complete.
+
 ## Google Integration Validation
 
 Integration checks are separate from deterministic unit tests:
 
 ```bash
-SHEETSMCP_GOOGLE_APPLICATION_CREDENTIALS=/secure/path/service-account.json \
 SHEETSMCP_INTEGRATION_SPREADSHEET=spreadsheet-id \
 ./scripts/dotnet-integration-test
 ```

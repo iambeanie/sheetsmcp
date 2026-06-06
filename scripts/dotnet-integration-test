@@ -3,17 +3,21 @@
 set -euo pipefail
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 
-credentials="${SHEETSMCP_GOOGLE_APPLICATION_CREDENTIALS:-}"
+default_config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+default_data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+oauth_client_config="$default_config_home/sheetsmcp/oauth_client.json"
+oauth_token_store="$default_data_home/sheetsmcp/google-oauth"
 spreadsheet="${SHEETSMCP_INTEGRATION_SPREADSHEET:-}"
 
-if [[ -z "$credentials" ]]; then
-    printf 'SKIP integration tests: SHEETSMCP_GOOGLE_APPLICATION_CREDENTIALS is not set\n'
+oauth_client_config="$(expand_home "$oauth_client_config")"
+if [[ ! -f "$oauth_client_config" ]]; then
+    printf 'SKIP integration tests: OAuth client config does not exist: %s\n' "$oauth_client_config"
     exit 0
 fi
 
-credentials="$(expand_home "$credentials")"
-if [[ ! -f "$credentials" ]]; then
-    printf 'SKIP integration tests: credentials file does not exist: %s\n' "$credentials"
+oauth_token_store="$(expand_home "$oauth_token_store")"
+if [[ ! -d "$oauth_token_store" ]]; then
+    printf 'SKIP integration tests: OAuth token store does not exist: %s\n' "$oauth_token_store"
     exit 0
 fi
 

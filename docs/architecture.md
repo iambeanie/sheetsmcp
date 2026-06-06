@@ -11,7 +11,7 @@ SheetsMCP .NET 10 executable
    |
    | Google Sheets API
    v
-Google Sheets shared with service account
+Google Sheets accessible to signed-in user
 ```
 
 ## Runtime Model
@@ -20,7 +20,7 @@ The v1 server is a .NET 10 console application using `ModelContextProtocol`. It 
 
 The process reads and writes MCP messages over stdio. It must not write normal logs to stdout because stdout belongs to the MCP protocol. Human-readable logs should go to stderr or to an explicitly configured audit log path.
 
-SheetsMCP runs as a bridge, not as a process bound to one spreadsheet. Startup configuration establishes credentials, logging, and guardrails only. The target spreadsheet is selected by the MCP tool-call arguments for each query.
+SheetsMCP runs as a bridge, not as a process bound to one spreadsheet. Startup configuration establishes OAuth token access, logging, and guardrails only. The target spreadsheet is selected by the MCP tool-call arguments for each query.
 
 ## Main Components
 
@@ -50,7 +50,7 @@ This layer owns Google API error handling and should translate common failures i
 
 ### Auth And Configuration Layer
 
-The auth layer loads service-account credentials from an explicit path, normally `SHEETSMCP_GOOGLE_APPLICATION_CREDENTIALS`. The credential should be scoped to the Google Sheets API.
+The auth layer loads a Google desktop OAuth client config and cached user tokens. Users authorize with `sheetsmcp auth login`; normal MCP tool calls use cached tokens and must not open a browser. The credential should be scoped to the Google Sheets API.
 
 The auth/config layer must not load or expose a default spreadsheet ID. The project should avoid broad Google APIs unless the implementation has a direct need. Drive listing and Drive search are out of scope.
 
@@ -68,9 +68,9 @@ Parsing should be deterministic and covered by unit tests.
 
 ## Google Access Rules
 
-The server acts only as the service account. Users must share each target spreadsheet with the service-account email address.
+The server acts only as the signed-in Google user. The user must already have access to each target spreadsheet.
 
-The server does not know which spreadsheets it can access. It only works when the caller provides a spreadsheet URL or ID in the MCP tool call. There is no startup spreadsheet, default spreadsheet, Drive search, Drive picker, file listing, or account-wide discovery.
+The server does not know which spreadsheets the user can access. It only works when the caller provides a spreadsheet URL or ID in the MCP tool call. There is no startup spreadsheet, default spreadsheet, Drive search, Drive picker, file listing, or account-wide discovery.
 
 ## Tool Surface
 
@@ -93,8 +93,8 @@ Simple bounded writes can execute directly after validation. Broad writes should
 1. Preview the operation and return a summary plus operation ID.
 2. Apply the operation only through a confirmation call using that operation ID.
 
-Preview state should be local and short-lived. It must not store service-account secrets or unnecessary cell contents.
+Preview state should be local and short-lived. It must not store OAuth token values or unnecessary cell contents.
 
 ## Project Boundaries
 
-The project may add more Sheets-specific tools, but the Google auth model remains service-account-only. Do not design abstractions around user OAuth or account switching.
+The project may add more Sheets-specific tools, but the Google auth model remains user OAuth only. Do not add service-account auth or account switching without an explicit project direction change.

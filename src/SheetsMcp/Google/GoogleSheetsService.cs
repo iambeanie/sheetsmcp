@@ -14,7 +14,7 @@ public sealed class GoogleSheetsService(ISheetsServiceFactory factory) : ISheets
     {
         try
         {
-            using var service = factory.Create();
+            using var service = await CreateServiceAsync(cancellationToken);
             var request = service.Spreadsheets.Get(spreadsheetId);
             request.IncludeGridData = false;
             var spreadsheet = await request.ExecuteAsync(cancellationToken);
@@ -40,7 +40,7 @@ public sealed class GoogleSheetsService(ISheetsServiceFactory factory) : ISheets
     {
         try
         {
-            using var service = factory.Create();
+            using var service = await CreateServiceAsync(cancellationToken);
             var response = await service.Spreadsheets.Values.Get(spreadsheetId, range).ExecuteAsync(cancellationToken);
             var values = ConvertValues(response.Values);
             var columnCount = ValueNormalizer.MaxColumnCount(values);
@@ -56,7 +56,7 @@ public sealed class GoogleSheetsService(ISheetsServiceFactory factory) : ISheets
     {
         try
         {
-            using var service = factory.Create();
+            using var service = await CreateServiceAsync(cancellationToken);
             var request = service.Spreadsheets.Values.Append(new ValueRange
             {
                 Values = ToGoogleValues(rows)
@@ -84,7 +84,7 @@ public sealed class GoogleSheetsService(ISheetsServiceFactory factory) : ISheets
     {
         try
         {
-            using var service = factory.Create();
+            using var service = await CreateServiceAsync(cancellationToken);
             var request = service.Spreadsheets.Values.Update(new ValueRange
             {
                 Values = ToGoogleValues(values)
@@ -110,7 +110,7 @@ public sealed class GoogleSheetsService(ISheetsServiceFactory factory) : ISheets
     {
         try
         {
-            using var service = factory.Create();
+            using var service = await CreateServiceAsync(cancellationToken);
             var body = new BatchUpdateValuesRequest
             {
                 ValueInputOption = "USER_ENTERED",
@@ -142,6 +142,18 @@ public sealed class GoogleSheetsService(ISheetsServiceFactory factory) : ISheets
         }
     }
 
+    private async Task<SheetsService> CreateServiceAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await factory.CreateAsync(cancellationToken);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw ToolError.OperationFailed(ex.Message);
+        }
+    }
+
     private static IReadOnlyList<IReadOnlyList<object?>> ConvertValues(IList<IList<object>>? values)
     {
         return values?
@@ -160,7 +172,7 @@ public sealed class GoogleSheetsService(ISheetsServiceFactory factory) : ISheets
     {
         var message = ex.HttpStatusCode switch
         {
-            System.Net.HttpStatusCode.Forbidden => "Google Sheets permission denied. Confirm the spreadsheet is shared with the service-account email.",
+            System.Net.HttpStatusCode.Forbidden => "Google Sheets permission denied. Confirm the signed-in Google user has access to the spreadsheet.",
             System.Net.HttpStatusCode.NotFound => "Google Sheets spreadsheet or range was not found.",
             System.Net.HttpStatusCode.BadRequest => "Google Sheets rejected the request. Check the spreadsheet ID, sheet name, and A1 range.",
             System.Net.HttpStatusCode.TooManyRequests => "Google Sheets quota was exceeded. Retry later.",

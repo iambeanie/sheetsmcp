@@ -10,7 +10,7 @@ public sealed class AuditLoggerTests
     public async Task FileAuditLogger_writes_metadata_without_cell_values()
     {
         var path = Path.Combine(Path.GetTempPath(), $"sheetsmcp-audit-{Guid.NewGuid():N}.log");
-        var logger = new FileAuditLogger(new SheetsMcpOptions("/tmp/credentials.json", WriteGuardrailMode.PreviewRequired, path));
+        var logger = new FileAuditLogger(new SheetsMcpOptions("/tmp/oauth-client.json", "/tmp/oauth-tokens", path));
 
         await logger.WriteAsync(new AuditLogEntry(
             DateTimeOffset.Parse("2026-04-26T00:00:00Z"),

@@ -15,15 +15,16 @@ public sealed class GoogleIntegrationTests
     public async Task Metadata_can_be_read_when_integration_environment_is_configured()
     {
         var spreadsheet = Environment.GetEnvironmentVariable(SpreadsheetEnvVar);
-        var credentials = Environment.GetEnvironmentVariable(SheetsMcpOptions.CredentialsEnvVar);
+        var options = SheetsMcpOptions.FromEnvironment();
 
-        if (string.IsNullOrWhiteSpace(spreadsheet) || string.IsNullOrWhiteSpace(credentials) || !File.Exists(ExpandHome(credentials)))
+        if (string.IsNullOrWhiteSpace(spreadsheet)
+            || !File.Exists(options.OAuthClientConfigPath)
+            || !Directory.Exists(options.OAuthTokenStorePath))
         {
             return;
         }
 
-        var options = new SheetsMcpOptions(ExpandHome(credentials), WriteGuardrailMode.PreviewRequired, null);
-        var service = new GoogleSheetsService(new GoogleSheetsServiceFactory(options));
+        var service = new GoogleSheetsService(new GoogleSheetsServiceFactory(new GoogleOAuthCredentialProvider(options)));
 
         var result = await service.GetMetadataAsync(spreadsheet, CancellationToken.None);
 
@@ -56,30 +57,16 @@ public sealed class GoogleIntegrationTests
     private static IntegrationContext? CreateIntegrationContext()
     {
         var spreadsheet = Environment.GetEnvironmentVariable(SpreadsheetEnvVar);
-        var credentials = Environment.GetEnvironmentVariable(SheetsMcpOptions.CredentialsEnvVar);
+        var options = SheetsMcpOptions.FromEnvironment();
 
-        if (string.IsNullOrWhiteSpace(spreadsheet) || string.IsNullOrWhiteSpace(credentials) || !File.Exists(ExpandHome(credentials)))
+        if (string.IsNullOrWhiteSpace(spreadsheet)
+            || !File.Exists(options.OAuthClientConfigPath)
+            || !Directory.Exists(options.OAuthTokenStorePath))
         {
             return null;
         }
 
-        var options = new SheetsMcpOptions(ExpandHome(credentials), WriteGuardrailMode.PreviewRequired, null);
-        return new IntegrationContext(spreadsheet, new GoogleSheetsService(new GoogleSheetsServiceFactory(options)));
-    }
-
-    private static string ExpandHome(string path)
-    {
-        if (path == "~")
-        {
-            return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        }
-
-        if (path.StartsWith("~/", StringComparison.Ordinal))
-        {
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path[2..]);
-        }
-
-        return path;
+        return new IntegrationContext(spreadsheet, new GoogleSheetsService(new GoogleSheetsServiceFactory(new GoogleOAuthCredentialProvider(options))));
     }
 
     private sealed record IntegrationContext(string SpreadsheetId, ISheetsService Service);

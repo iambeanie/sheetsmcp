@@ -6,6 +6,7 @@ source "$script_dir/lib/common.sh"
 
 readonly supported_rids=(linux-x64 linux-arm64 osx-x64 osx-arm64 win-x64)
 requested="${1:-all}"
+linux_x64_packaging_dir="$REPO_ROOT/packaging/linux-x64"
 
 is_supported_rid() {
     local candidate="$1"
@@ -48,6 +49,22 @@ for rid in "${rids[@]}"; do
     [[ "$rid" == win-* ]] && executable="sheetsmcp.exe"
     cp "$publish_dir/$executable" "$stage_dir/$executable"
     cp "$REPO_ROOT/README.md" "$stage_dir/README.md"
+
+    if [[ "$rid" == "linux-x64" ]]; then
+        run_quiet "installer syntax linux-x64" bash -n "$linux_x64_packaging_dir/install.sh"
+        install -m 0755 "$linux_x64_packaging_dir/install.sh" "$stage_dir/install.sh"
+        install -m 0755 "$linux_x64_packaging_dir/Install SheetsMCP.desktop" "$stage_dir/Install SheetsMCP.desktop"
+        install -m 0644 "$linux_x64_packaging_dir/INSTALL-linux-x64.md" "$stage_dir/INSTALL-linux-x64.md"
+
+        if [[ -n "${SHEETSMCP_RELEASE_OAUTH_CLIENT_JSON:-}" ]]; then
+            if [[ ! -f "$SHEETSMCP_RELEASE_OAUTH_CLIENT_JSON" ]]; then
+                printf 'SHEETSMCP_RELEASE_OAUTH_CLIENT_JSON does not exist: %s\n' "$SHEETSMCP_RELEASE_OAUTH_CLIENT_JSON" >&2
+                exit 2
+            fi
+
+            install -m 0600 "$SHEETSMCP_RELEASE_OAUTH_CLIENT_JSON" "$stage_dir/oauth_client.json"
+        fi
+    fi
 
     for license in LICENSE LICENSE.md LICENSE.txt; do
         [[ -f "$REPO_ROOT/$license" ]] && cp "$REPO_ROOT/$license" "$stage_dir/$license"

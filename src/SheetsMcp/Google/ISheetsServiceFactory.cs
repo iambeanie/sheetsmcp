@@ -4,5 +4,5 @@ namespace SheetsMcp.Google;
 
 public interface ISheetsServiceFactory
 {
-    SheetsService Create();
+    Task<SheetsService> CreateAsync(CancellationToken cancellationToken);
 }
