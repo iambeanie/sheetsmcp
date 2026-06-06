@@ -23,6 +23,14 @@ public static class SheetsMcpTools
         CancellationToken cancellationToken) =>
         service.ReadRangeAsync(spreadsheet, range, cancellationToken);
 
+    [McpServerTool(Name = "read_formatting", ReadOnly = true, Destructive = false), Description("Read common cell formatting from a bounded, sheet-qualified A1 range.")]
+    public static Task<FormattingReadResult> ReadFormatting(
+        ISpreadsheetToolService service,
+        [Description("Google Sheets URL or spreadsheet ID.")] string spreadsheet,
+        [Description("Sheet-qualified bounded A1 range such as Sheet1!A1:B10.")] string range,
+        CancellationToken cancellationToken) =>
+        service.ReadFormattingAsync(spreadsheet, range, cancellationToken);
+
     [McpServerTool(Name = "find_values", ReadOnly = true, Destructive = false), Description("Search provided bounded ranges for matching text.")]
     public static Task<FindValuesResult> FindValues(
         ISpreadsheetToolService service,
@@ -65,4 +73,18 @@ public static class SheetsMcpTools
         [Description("Operation ID returned by batch_update_with_preview.")] string operationId,
         CancellationToken cancellationToken) =>
         service.ConfirmBatchUpdateAsync(operationId, cancellationToken);
+
+    [McpServerTool(Name = "format_range_with_preview", ReadOnly = false, Destructive = true), Description("Preview common formatting changes for bounded ranges and return a confirmation operation ID.")]
+    public static FormattingPreviewResult FormatRangeWithPreview(
+        ISpreadsheetToolService service,
+        [Description("Google Sheets URL or spreadsheet ID.")] string spreadsheet,
+        [Description("Formatting updates to preview. Ranges must be sheet-qualified bounded A1 ranges.")] IReadOnlyList<FormattingUpdateInput> updates) =>
+        service.PreviewFormattingUpdate(spreadsheet, updates);
+
+    [McpServerTool(Name = "confirm_formatting_update", ReadOnly = false, Destructive = true), Description("Apply a previously previewed formatting update.")]
+    public static Task<FormattingConfirmResult> ConfirmFormattingUpdate(
+        ISpreadsheetToolService service,
+        [Description("Operation ID returned by format_range_with_preview.")] string operationId,
+        CancellationToken cancellationToken) =>
+        service.ConfirmFormattingUpdateAsync(operationId, cancellationToken);
 }

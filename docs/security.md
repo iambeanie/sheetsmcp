@@ -40,7 +40,7 @@ Required write guardrails:
 - Validate spreadsheet IDs or URLs.
 - Validate A1 ranges.
 - Reject unbounded destructive updates.
-- Require preview and confirmation for broad batch writes.
+- Require preview and confirmation for broad batch writes and formatting writes.
 - Summarize changes without dumping sensitive spreadsheet contents.
 - Keep write operations scoped to the provided spreadsheet.
 

@@ -78,17 +78,21 @@ Initial tools should be narrow:
 
 - `get_spreadsheet_metadata(spreadsheet)`
 - `read_range(spreadsheet, range)`
+- `read_formatting(spreadsheet, range)`
 - `find_values(spreadsheet, ranges, query)`
 - `append_rows(spreadsheet, rangeOrSheet, rows)`
 - `update_range(spreadsheet, range, values)`
 - `batch_update_with_preview(spreadsheet, operations)`
 - `confirm_batch_update(operationId)`
+- `format_range_with_preview(spreadsheet, updates)`
+- `confirm_formatting_update(operationId)`
 
 `spreadsheet` may be a URL or ID. Internally the app should normalize it before calling Google.
+Formatting ranges must be bounded and sheet-qualified.
 
 ## Write Flow
 
-Simple bounded writes can execute directly after validation. Broad writes should be two-step:
+Simple bounded value writes can execute directly after validation. Broad value writes and formatting writes should be two-step:
 
 1. Preview the operation and return a summary plus operation ID.
 2. Apply the operation only through a confirmation call using that operation ID.

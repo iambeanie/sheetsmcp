@@ -28,6 +28,19 @@ public sealed class PreviewStoreTests
         Assert.Throws<McpException>(() => store.Consume(operation.OperationId));
     }
 
+    [Fact]
+    public void FormattingStore_consume_returns_operation_once()
+    {
+        var store = new InMemoryFormattingPreviewStore();
+        var operation = store.Create(
+            "spreadsheet",
+            [new FormattingUpdateInput("Sheet1!A1:A1", new CellFormatUpdate(Bold: true))],
+            ["textFormat.bold"]);
+
+        Assert.Equal(operation.OperationId, store.Consume(operation.OperationId).OperationId);
+        Assert.Throws<McpException>(() => store.Consume(operation.OperationId));
+    }
+
     private sealed class MutableTimeProvider(DateTimeOffset utcNow) : TimeProvider
     {
         public DateTimeOffset UtcNow { get; set; } = utcNow;

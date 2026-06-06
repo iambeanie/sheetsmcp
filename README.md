@@ -36,13 +36,16 @@ The initial server should expose narrow tools instead of a generic Google API pa
 
 - `get_spreadsheet_metadata`: return spreadsheet title, sheets, grid sizes, and basic properties.
 - `read_range`: read values from an A1 range.
+- `read_formatting`: read common cell formatting from a bounded, sheet-qualified A1 range.
 - `find_values`: search provided ranges for matching text or values.
 - `append_rows`: append rows to a specific sheet or range.
 - `update_range`: update a bounded A1 range.
 - `batch_update_with_preview`: prepare a broad write operation and return a preview.
 - `confirm_batch_update`: apply a previously previewed batch update.
+- `format_range_with_preview`: prepare common cell formatting changes and return a preview.
+- `confirm_formatting_update`: apply a previously previewed formatting update.
 
-Write tools should validate ranges and summarize changes. Broad or destructive writes should use a preview/confirm flow.
+Write tools should validate ranges and summarize changes. Broad, destructive, or formatting writes should use a preview/confirm flow.
 
 ## Local Development
 
