@@ -73,3 +73,23 @@ public sealed record BatchConfirmResult(
     int UpdatedColumns,
     int UpdatedCells,
     IReadOnlyList<string> UpdatedRanges);
+
+public sealed record SheetTabResult(
+    string SpreadsheetId,
+    int SheetId,
+    string Title,
+    string Action);
+
+public sealed record DeleteSheetTabPreviewResult(
+    string OperationId,
+    string SpreadsheetId,
+    DateTimeOffset ExpiresAt,
+    int SheetId,
+    string Title);
+
+public sealed record DeleteSheetTabConfirmResult(
+    string OperationId,
+    string SpreadsheetId,
+    int SheetId,
+    string Title,
+    string Action);

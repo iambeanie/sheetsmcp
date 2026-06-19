@@ -240,6 +240,118 @@ public sealed class GoogleSheetsService(ISheetsServiceFactory factory) : ISheets
         }
     }
 
+    public async Task<SheetTabResult> CreateSheetTabAsync(string spreadsheetId, string title, int? rowCount, int? columnCount, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var service = await CreateServiceAsync(cancellationToken);
+            var properties = new SheetProperties
+            {
+                Title = title
+            };
+
+            if (rowCount is not null || columnCount is not null)
+            {
+                properties.GridProperties = new GridProperties
+                {
+                    RowCount = rowCount,
+                    ColumnCount = columnCount
+                };
+            }
+
+            var body = new BatchUpdateSpreadsheetRequest
+            {
+                Requests =
+                [
+                    new Request
+                    {
+                        AddSheet = new AddSheetRequest
+                        {
+                            Properties = properties
+                        }
+                    }
+                ]
+            };
+
+            var response = await service.Spreadsheets.BatchUpdate(body, spreadsheetId).ExecuteAsync(cancellationToken);
+            var sheetProperties = response.Replies?.FirstOrDefault()?.AddSheet?.Properties;
+            return new SheetTabResult(
+                spreadsheetId,
+                sheetProperties?.SheetId ?? 0,
+                sheetProperties?.Title ?? title,
+                "created");
+        }
+        catch (GoogleApiException ex)
+        {
+            throw TranslateGoogleException(ex);
+        }
+    }
+
+    public async Task<SheetTabResult> RenameSheetTabAsync(string spreadsheetId, int sheetId, string newTitle, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var service = await CreateServiceAsync(cancellationToken);
+            var body = new BatchUpdateSpreadsheetRequest
+            {
+                Requests =
+                [
+                    new Request
+                    {
+                        UpdateSheetProperties = new UpdateSheetPropertiesRequest
+                        {
+                            Properties = new SheetProperties
+                            {
+                                SheetId = sheetId,
+                                Title = newTitle
+                            },
+                            Fields = "title"
+                        }
+                    }
+                ]
+            };
+
+            await service.Spreadsheets.BatchUpdate(body, spreadsheetId).ExecuteAsync(cancellationToken);
+            return new SheetTabResult(
+                spreadsheetId,
+                sheetId,
+                newTitle,
+                "renamed");
+        }
+        catch (GoogleApiException ex)
+        {
+            throw TranslateGoogleException(ex);
+        }
+    }
+
+    public async Task<DeleteSheetTabConfirmResult> DeleteSheetTabAsync(string operationId, string spreadsheetId, int sheetId, string title, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var service = await CreateServiceAsync(cancellationToken);
+            var body = new BatchUpdateSpreadsheetRequest
+            {
+                Requests =
+                [
+                    new Request
+                    {
+                        DeleteSheet = new DeleteSheetRequest
+                        {
+                            SheetId = sheetId
+                        }
+                    }
+                ]
+            };
+
+            await service.Spreadsheets.BatchUpdate(body, spreadsheetId).ExecuteAsync(cancellationToken);
+            return new DeleteSheetTabConfirmResult(operationId, spreadsheetId, sheetId, title, "deleted");
+        }
+        catch (GoogleApiException ex)
+        {
+            throw TranslateGoogleException(ex);
+        }
+    }
+
     private async Task<SheetsService> CreateServiceAsync(CancellationToken cancellationToken)
     {
         try

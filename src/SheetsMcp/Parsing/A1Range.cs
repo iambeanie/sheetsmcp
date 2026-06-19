@@ -22,7 +22,7 @@ public static class A1RangeParser
 {
     private static readonly Regex CellPattern = new(@"^\$?([A-Za-z]{1,3})\$?([1-9][0-9]*)$", RegexOptions.Compiled);
     private static readonly Regex PlainSheetNamePattern = new(@"^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.Compiled);
-    private static readonly char[] InvalidSheetNameChars = ['[', ']', ':', '*', '?', '/', '\\'];
+    private static readonly char[] InvalidSheetNameChars = ['[', ']', ':', '*', '?', '\\'];
 
     public static A1Range ParseBounded(string range)
     {
@@ -86,7 +86,14 @@ public static class A1RangeParser
             return false;
         }
 
-        parsed = new A1Range(original, sheetName, startColumn, startRow, endColumn, endRow);
+        var startCell = $"{startColumn}{startRow}";
+        var endCell = $"{endColumn}{endRow}";
+        var normalizedRangePart = startCell == endCell ? startCell : $"{startCell}:{endCell}";
+        var normalizedOriginal = string.IsNullOrWhiteSpace(sheetName)
+            ? normalizedRangePart
+            : $"{QuoteSheetName(sheetName)}!{normalizedRangePart}";
+
+        parsed = new A1Range(normalizedOriginal, sheetName, startColumn, startRow, endColumn, endRow);
         return true;
     }
 
@@ -102,13 +109,18 @@ public static class A1RangeParser
 
     public static string QuoteSheetName(string sheetName)
     {
-        var validated = ValidateSheetName(sheetName);
+        var validated = NormalizeSheetName(sheetName);
         if (PlainSheetNamePattern.IsMatch(validated))
         {
             return validated;
         }
 
         return $"'{validated.Replace("'", "''", StringComparison.Ordinal)}'";
+    }
+
+    public static string NormalizeSheetName(string sheetName)
+    {
+        return ValidateSheetName(sheetName);
     }
 
     public static string CellReference(string? sheetName, int row, int columnIndex)

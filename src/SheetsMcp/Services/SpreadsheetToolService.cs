@@ -26,12 +26,21 @@ public interface ISpreadsheetToolService
     FormattingPreviewResult PreviewFormattingUpdate(string spreadsheet, IReadOnlyList<FormattingUpdateInput> updates);
 
     Task<FormattingConfirmResult> ConfirmFormattingUpdateAsync(string operationId, CancellationToken cancellationToken);
+
+    Task<SheetTabResult> CreateSheetTabAsync(string spreadsheet, string title, int? rowCount, int? columnCount, CancellationToken cancellationToken);
+
+    Task<SheetTabResult> RenameSheetTabAsync(string spreadsheet, string sheet, string newTitle, CancellationToken cancellationToken);
+
+    Task<DeleteSheetTabPreviewResult> PreviewDeleteSheetTabAsync(string spreadsheet, string sheet, CancellationToken cancellationToken);
+
+    Task<DeleteSheetTabConfirmResult> ConfirmDeleteSheetTabAsync(string operationId, CancellationToken cancellationToken);
 }
 
 public sealed class SpreadsheetToolService(
     ISheetsService sheetsService,
     IBatchPreviewStore previewStore,
     IFormattingPreviewStore formattingPreviewStore,
+    IDeleteSheetTabPreviewStore deleteSheetTabPreviewStore,
     IAuditLogger auditLogger) : ISpreadsheetToolService
 {
     private static readonly Regex HexColorPattern = new("^#[0-9a-fA-F]{6}$", RegexOptions.Compiled);
@@ -297,6 +306,78 @@ public sealed class SpreadsheetToolService(
         }
     }
 
+    public async Task<SheetTabResult> CreateSheetTabAsync(string spreadsheet, string title, int? rowCount, int? columnCount, CancellationToken cancellationToken)
+    {
+        var spreadsheetId = SpreadsheetReference.Normalize(spreadsheet);
+        var normalizedTitle = A1RangeParser.NormalizeSheetName(title);
+        ValidateGridDimension(rowCount, nameof(rowCount));
+        ValidateGridDimension(columnCount, nameof(columnCount));
+
+        try
+        {
+            var result = await sheetsService.CreateSheetTabAsync(spreadsheetId, normalizedTitle, rowCount, columnCount, cancellationToken);
+            await AuditAsync("create_sheet_tab", spreadsheetId, normalizedTitle, "create-sheet-tab", 0, 0, 0, true, cancellationToken);
+            return result;
+        }
+        catch
+        {
+            await AuditAsync("create_sheet_tab", spreadsheetId, normalizedTitle, "create-sheet-tab", 0, 0, 0, false, cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<SheetTabResult> RenameSheetTabAsync(string spreadsheet, string sheet, string newTitle, CancellationToken cancellationToken)
+    {
+        var spreadsheetId = SpreadsheetReference.Normalize(spreadsheet);
+        var normalizedSheet = A1RangeParser.NormalizeSheetName(sheet);
+        var normalizedNewTitle = A1RangeParser.NormalizeSheetName(newTitle);
+        var existingSheet = await ResolveSheetAsync(spreadsheetId, normalizedSheet, cancellationToken);
+
+        try
+        {
+            var result = await sheetsService.RenameSheetTabAsync(spreadsheetId, existingSheet.SheetId!.Value, normalizedNewTitle, cancellationToken);
+            await AuditAsync("rename_sheet_tab", spreadsheetId, $"{normalizedSheet}->{normalizedNewTitle}", "rename-sheet-tab", 0, 0, 0, true, cancellationToken);
+            return result;
+        }
+        catch
+        {
+            await AuditAsync("rename_sheet_tab", spreadsheetId, $"{normalizedSheet}->{normalizedNewTitle}", "rename-sheet-tab", 0, 0, 0, false, cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<DeleteSheetTabPreviewResult> PreviewDeleteSheetTabAsync(string spreadsheet, string sheet, CancellationToken cancellationToken)
+    {
+        var spreadsheetId = SpreadsheetReference.Normalize(spreadsheet);
+        var normalizedSheet = A1RangeParser.NormalizeSheetName(sheet);
+        var metadata = await sheetsService.GetMetadataAsync(spreadsheetId, cancellationToken);
+        if (metadata.Sheets.Count <= 1)
+        {
+            throw Errors.ToolError.InvalidInput("A spreadsheet must contain at least two sheet tabs before one can be deleted.");
+        }
+
+        var existingSheet = ResolveSheet(metadata, normalizedSheet);
+        var operation = deleteSheetTabPreviewStore.Create(spreadsheetId, existingSheet.SheetId!.Value, existingSheet.Title);
+        return new DeleteSheetTabPreviewResult(operation.OperationId, operation.SpreadsheetId, operation.ExpiresAt, operation.SheetId, operation.Title);
+    }
+
+    public async Task<DeleteSheetTabConfirmResult> ConfirmDeleteSheetTabAsync(string operationId, CancellationToken cancellationToken)
+    {
+        var operation = deleteSheetTabPreviewStore.Consume(operationId);
+
+        try
+        {
+            var result = await sheetsService.DeleteSheetTabAsync(operation.OperationId, operation.SpreadsheetId, operation.SheetId, operation.Title, cancellationToken);
+            await AuditAsync("confirm_delete_sheet_tab", operation.SpreadsheetId, operation.Title, "delete-sheet-tab", 0, 0, 0, true, cancellationToken);
+            return result;
+        }
+        catch
+        {
+            await AuditAsync("confirm_delete_sheet_tab", operation.SpreadsheetId, operation.Title, "delete-sheet-tab", 0, 0, 0, false, cancellationToken);
+            throw;
+        }
+    }
+
     private Task AuditAsync(string tool, string spreadsheetId, string target, string writeType, int rowCount, int columnCount, int cellCount, bool success, CancellationToken cancellationToken)
     {
         return auditLogger.WriteAsync(new AuditLogEntry(
@@ -320,6 +401,36 @@ public sealed class SpreadsheetToolService(
         }
 
         return parsedRange;
+    }
+
+    private async Task<SheetSummary> ResolveSheetAsync(string spreadsheetId, string sheet, CancellationToken cancellationToken)
+    {
+        var metadata = await sheetsService.GetMetadataAsync(spreadsheetId, cancellationToken);
+        return ResolveSheet(metadata, sheet);
+    }
+
+    private static SheetSummary ResolveSheet(SpreadsheetMetadataResult metadata, string sheet)
+    {
+        var summary = metadata.Sheets.FirstOrDefault(candidate => string.Equals(candidate.Title, sheet, StringComparison.Ordinal));
+        if (summary is null)
+        {
+            throw Errors.ToolError.InvalidInput($"Sheet '{sheet}' was not found.");
+        }
+
+        if (summary.SheetId is null)
+        {
+            throw Errors.ToolError.InvalidInput($"Sheet '{sheet}' does not have a sheet ID.");
+        }
+
+        return summary;
+    }
+
+    private static void ValidateGridDimension(int? value, string name)
+    {
+        if (value is <= 0)
+        {
+            throw Errors.ToolError.InvalidInput($"{name} must be greater than zero.");
+        }
     }
 
     private static FormattingUpdateInput NormalizeFormattingUpdate(string normalizedRange, FormattingUpdateInput update)

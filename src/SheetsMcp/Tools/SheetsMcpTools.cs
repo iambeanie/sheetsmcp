@@ -87,4 +87,38 @@ public static class SheetsMcpTools
         [Description("Operation ID returned by format_range_with_preview.")] string operationId,
         CancellationToken cancellationToken) =>
         service.ConfirmFormattingUpdateAsync(operationId, cancellationToken);
+
+    [McpServerTool(Name = "create_sheet_tab", ReadOnly = false, Destructive = false), Description("Create a new sheet tab in a spreadsheet.")]
+    public static Task<SheetTabResult> CreateSheetTab(
+        ISpreadsheetToolService service,
+        [Description("Google Sheets URL or spreadsheet ID.")] string spreadsheet,
+        [Description("Title for the new sheet tab.")] string title,
+        [Description("Optional initial row count.")] int? rowCount = null,
+        [Description("Optional initial column count.")] int? columnCount = null,
+        CancellationToken cancellationToken = default) =>
+        service.CreateSheetTabAsync(spreadsheet, title, rowCount, columnCount, cancellationToken);
+
+    [McpServerTool(Name = "rename_sheet_tab", ReadOnly = false, Destructive = true, Idempotent = true), Description("Rename an existing sheet tab.")]
+    public static Task<SheetTabResult> RenameSheetTab(
+        ISpreadsheetToolService service,
+        [Description("Google Sheets URL or spreadsheet ID.")] string spreadsheet,
+        [Description("Exact current sheet tab title.")] string sheet,
+        [Description("New sheet tab title.")] string newTitle,
+        CancellationToken cancellationToken) =>
+        service.RenameSheetTabAsync(spreadsheet, sheet, newTitle, cancellationToken);
+
+    [McpServerTool(Name = "delete_sheet_tab_with_preview", ReadOnly = false, Destructive = true), Description("Preview deleting a sheet tab and return a confirmation operation ID.")]
+    public static Task<DeleteSheetTabPreviewResult> DeleteSheetTabWithPreview(
+        ISpreadsheetToolService service,
+        [Description("Google Sheets URL or spreadsheet ID.")] string spreadsheet,
+        [Description("Exact sheet tab title to delete.")] string sheet,
+        CancellationToken cancellationToken) =>
+        service.PreviewDeleteSheetTabAsync(spreadsheet, sheet, cancellationToken);
+
+    [McpServerTool(Name = "confirm_delete_sheet_tab", ReadOnly = false, Destructive = true), Description("Delete a sheet tab from a previously previewed operation.")]
+    public static Task<DeleteSheetTabConfirmResult> ConfirmDeleteSheetTab(
+        ISpreadsheetToolService service,
+        [Description("Operation ID returned by delete_sheet_tab_with_preview.")] string operationId,
+        CancellationToken cancellationToken) =>
+        service.ConfirmDeleteSheetTabAsync(operationId, cancellationToken);
 }

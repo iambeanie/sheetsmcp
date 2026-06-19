@@ -44,8 +44,13 @@ The initial server should expose narrow tools instead of a generic Google API pa
 - `confirm_batch_update`: apply a previously previewed batch update.
 - `format_range_with_preview`: prepare common cell formatting changes and return a preview.
 - `confirm_formatting_update`: apply a previously previewed formatting update.
+- `create_sheet_tab`: create a new sheet tab.
+- `rename_sheet_tab`: rename an existing sheet tab.
+- `delete_sheet_tab_with_preview`: prepare a sheet tab deletion and return a preview.
+- `confirm_delete_sheet_tab`: apply a previously previewed sheet tab deletion.
 
 Write tools should validate ranges and summarize changes. Broad, destructive, or formatting writes should use a preview/confirm flow.
+Sheet tab names with characters such as `/` should be quoted in A1 ranges, for example `'FY25/FY26'!A1:B10`.
 
 ## Local Development
 

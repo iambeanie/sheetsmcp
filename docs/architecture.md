@@ -86,13 +86,17 @@ Initial tools should be narrow:
 - `confirm_batch_update(operationId)`
 - `format_range_with_preview(spreadsheet, updates)`
 - `confirm_formatting_update(operationId)`
+- `create_sheet_tab(spreadsheet, title, rowCount?, columnCount?)`
+- `rename_sheet_tab(spreadsheet, sheet, newTitle)`
+- `delete_sheet_tab_with_preview(spreadsheet, sheet)`
+- `confirm_delete_sheet_tab(operationId)`
 
 `spreadsheet` may be a URL or ID. Internally the app should normalize it before calling Google.
-Formatting ranges must be bounded and sheet-qualified.
+Formatting ranges must be bounded and sheet-qualified. Sheet tab names that require A1 quoting, including names with `/`, should be accepted when quoted such as `'FY25/FY26'!A1:B2`.
 
 ## Write Flow
 
-Simple bounded value writes can execute directly after validation. Broad value writes and formatting writes should be two-step:
+Simple bounded value writes and narrow tab create/rename operations can execute directly after validation. Broad value writes, formatting writes, and sheet tab deletes should be two-step:
 
 1. Preview the operation and return a summary plus operation ID.
 2. Apply the operation only through a confirmation call using that operation ID.

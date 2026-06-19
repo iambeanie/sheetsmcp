@@ -17,4 +17,10 @@ public interface ISheetsService
     Task<BatchConfirmResult> BatchUpdateValuesAsync(string operationId, string spreadsheetId, IReadOnlyList<BatchValueUpdateInput> updates, CancellationToken cancellationToken);
 
     Task<FormattingConfirmResult> BatchUpdateFormattingAsync(string operationId, string spreadsheetId, IReadOnlyList<FormattingUpdateInput> updates, IReadOnlyList<string> fields, CancellationToken cancellationToken);
+
+    Task<SheetTabResult> CreateSheetTabAsync(string spreadsheetId, string title, int? rowCount, int? columnCount, CancellationToken cancellationToken);
+
+    Task<SheetTabResult> RenameSheetTabAsync(string spreadsheetId, int sheetId, string newTitle, CancellationToken cancellationToken);
+
+    Task<DeleteSheetTabConfirmResult> DeleteSheetTabAsync(string operationId, string spreadsheetId, int sheetId, string title, CancellationToken cancellationToken);
 }

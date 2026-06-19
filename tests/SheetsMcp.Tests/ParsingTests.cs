@@ -44,6 +44,26 @@ public sealed class ParsingTests
         Assert.Equal(30, range.CellCount);
     }
 
+    [Fact]
+    public void ParseBounded_accepts_quoted_sheet_names_with_slashes()
+    {
+        var range = A1RangeParser.ParseBounded("'FY25/FY26'!A1:B2");
+
+        Assert.Equal("FY25/FY26", range.SheetName);
+        Assert.Equal("'FY25/FY26'!A1:B2", range.Original);
+        Assert.Equal(4, range.CellCount);
+    }
+
+    [Fact]
+    public void ParseBounded_normalizes_unquoted_sheet_names_with_slashes()
+    {
+        var range = A1RangeParser.ParseBounded("FY25/FY26!A1:B2");
+
+        Assert.Equal("FY25/FY26", range.SheetName);
+        Assert.Equal("'FY25/FY26'!A1:B2", range.Original);
+        Assert.Equal(4, range.CellCount);
+    }
+
     [Theory]
     [InlineData("A:A")]
     [InlineData("1:10")]
@@ -58,9 +78,16 @@ public sealed class ParsingTests
     [Theory]
     [InlineData("Sheet1", "Sheet1")]
     [InlineData("Sales Q1", "'Sales Q1'")]
+    [InlineData("FY25/FY26", "'FY25/FY26'")]
     [InlineData("Owner's Sheet", "'Owner''s Sheet'")]
     public void NormalizeRangeOrSheet_quotes_sheet_names_when_needed(string input, string expected)
     {
         Assert.Equal(expected, A1RangeParser.NormalizeRangeOrSheet(input));
+    }
+
+    [Fact]
+    public void CellReference_quotes_sheet_names_with_slashes()
+    {
+        Assert.Equal("'FY25/FY26'!B3", A1RangeParser.CellReference("FY25/FY26", 3, 2));
     }
 }

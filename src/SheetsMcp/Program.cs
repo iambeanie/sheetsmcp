@@ -40,6 +40,7 @@ builder.Services.AddSingleton<ISheetsServiceFactory, GoogleSheetsServiceFactory>
 builder.Services.AddSingleton<ISheetsService, GoogleSheetsService>();
 builder.Services.AddSingleton<IBatchPreviewStore, InMemoryBatchPreviewStore>();
 builder.Services.AddSingleton<IFormattingPreviewStore, InMemoryFormattingPreviewStore>();
+builder.Services.AddSingleton<IDeleteSheetTabPreviewStore, InMemoryDeleteSheetTabPreviewStore>();
 builder.Services.AddSingleton<IAuditLogger, FileAuditLogger>();
 builder.Services.AddSingleton<ISpreadsheetToolService, SpreadsheetToolService>();
 
